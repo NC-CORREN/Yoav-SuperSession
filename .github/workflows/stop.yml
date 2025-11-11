@@ -1,0 +1,27 @@
+name: SuperSession Stop
+
+on:
+  repository_dispatch:
+    types: [ops-run]
+  workflow_dispatch:  # lets you click 'Run workflow' to drop a STOP flag manually
+
+permissions:
+  contents: write
+
+jobs:
+  stop:
+    if: github.event.client_payload.task == 'session_stop' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create STOP flag
+        run: |
+          mkdir -p session
+          date > session/STOP
+      - name: Commit STOP flag
+        run: |
+          git config user.name "ops-bot"
+          git config user.email "ops-bot@users.noreply.github.com"
+          git add session/STOP
+          git commit -m "STOP SuperSession"
+          git push
