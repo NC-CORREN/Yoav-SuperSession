@@ -1,0 +1,56 @@
+name: SuperSession (6h)
+
+on:
+  repository_dispatch:
+    types: [ops-run]   # allows starting from PowerShell/iOS
+  workflow_dispatch:     # allows starting from the Actions UI
+
+jobs:
+  session:
+    if: github.event.client_payload.task == 'session_start' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360     # ~6 hours
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure tools
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+          [ -f setup/bootstrap.sh ] && bash setup/bootstrap.sh || true
+
+      - name: Run supervised loop
+        env:
+          LOOP_SECS: "60"
+        run: |
+          set -e
+          touch .session.log
+          echo "Starting SuperSession loop…" | tee -a .session.log
+          i=0
+          while [ $i -lt 360 ]; do
+            if [ -f session/STOP ]; then
+              echo "STOP flag detected. Exiting." | tee -a .session.log
+              break
+            fi
+            echo "::group::Cycle $i — maintenance"
+            if [ -f qa/preflight.sh ]; then
+              bash qa/preflight.sh || true
+            fi
+            echo "::endgroup::"
+            sleep "$LOOP_SECS"
+            i=$((i+1))
+          done
+          echo "SuperSession finished." | tee -a .session.log
+
+      - name: Push session log (optional)
+        run: |
+          git config user.name "ops-bot"
+          git config user.email "ops-bot@users.noreply.github.com"
+          mkdir -p session
+          cp .session.log session/SESSION_REPORT.md || true
+          git add session/SESSION_REPORT.md || true
+          git commit -m "Session report [skip ci]" || true
+          git push || true
