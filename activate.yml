@@ -1,0 +1,50 @@
+name: One-Time Activator
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  activate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check ADMIN_PAT
+        env:
+          ADMIN_PAT: ${{ secrets.ADMIN_PAT }}
+        run: |
+          if [ -z "$ADMIN_PAT" ]; then
+            echo "::error::Missing repo secret ADMIN_PAT. Create a fine-grained PAT with admin:repo_hook, actions:write, contents:write scoped to this repo."
+            exit 1
+          fi
+
+      - name: Configure Workflow Permissions (Read & Write)
+        env:
+          ADMIN_PAT: ${{ secrets.ADMIN_PAT }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          set -e
+          echo "Setting workflow permissions to read-write..."
+          curl -s -X PUT             -H "Authorization: Bearer $ADMIN_PAT"             -H "Accept: application/vnd.github+json"             https://api.github.com/repos/$OWNER/$REPO/actions/permissions             -d '{"enabled":true,"allowed_actions":"all","default_workflow_permissions":"write"}'
+
+      - name: Seed Labels (optional)
+        env:
+          ADMIN_PAT: ${{ secrets.ADMIN_PAT }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          set -e
+          make_label () {
+            NAME="$1"; COLOR="$2"; DESC="$3"
+            curl -s -X POST               -H "Authorization: Bearer $ADMIN_PAT"               -H "Accept: application/vnd.github+json"               https://api.github.com/repos/$OWNER/$REPO/labels               -d "{"name":"$NAME","color":"$COLOR","description":"$DESC"}" >/dev/null || true
+          }
+          make_label "ops" "0e8a16" "Operations tasks"
+          make_label "preflight" "5319e7" "Preflight/QA"
+          make_label "automation" "1d76db" "Automation-related"
+
+      - name: Summary
+        run: |
+          echo "✅ Activator complete. Repository workflow permissions set to write."
+

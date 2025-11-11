@@ -1,0 +1,8 @@
+{
+  "python_required": true,
+  "node_required": true,
+  "min_pytest_pass": 0,
+  "min_jest_pass": 0,
+  "lint_python": true,
+  "lint_node": true
+}
