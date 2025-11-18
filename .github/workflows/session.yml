@@ -22,28 +22,43 @@ jobs:
           sudo apt-get update && sudo apt-get install -y jq
           [ -f setup/bootstrap.sh ] && bash setup/bootstrap.sh || true
 
-      - name: Run supervised loop
+            - name: Run supervised loop
         env:
           LOOP_SECS: "60"
         run: |
           set -e
           touch .session.log
-          echo "Starting SuperSession loop…" | tee -a .session.log
+          echo "Starting SuperSession (v2 controller-ready)…" | tee -a .session.log
+
           i=0
           while [ $i -lt 360 ]; do
+
+            # STOP signal → exit cleanly
             if [ -f session/STOP ]; then
               echo "STOP flag detected. Exiting." | tee -a .session.log
               break
             fi
-            echo "::group::Cycle $i — maintenance"
+
+            echo "::group::Cycle $i — maintenance + controller sync"
+
+            # Run preflight if available
             if [ -f qa/preflight.sh ]; then
               bash qa/preflight.sh || true
             fi
+
+            # Controller polling (new)
+            if [ -f supersession/controller.py ]; then
+              echo "Controller check…" | tee -a .session.log
+              python3 supersession/controller.py || true
+            fi
+
             echo "::endgroup::"
+
             sleep "$LOOP_SECS"
             i=$((i+1))
           done
-          echo "SuperSession finished." | tee -a .session.log
+
+          echo "SuperSession loop ended." | tee -a .session.log
 
       - name: Push session log (optional)
         run: |
