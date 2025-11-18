@@ -2,7 +2,7 @@ name: SuperSession Stop
 
 on:
   repository_dispatch:
-    types: [ops-run]
+    types: [ops-stop]
   workflow_dispatch:  # lets you click 'Run workflow' to drop a STOP flag manually
 
 permissions:
