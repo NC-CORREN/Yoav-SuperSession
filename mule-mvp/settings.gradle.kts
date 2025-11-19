@@ -19,5 +19,5 @@ include(
     ":services:capmule-core",
     ":services:af-core",
     ":services:wi-core",
-    ":services:clearing-stub"
+    ":services:clearing-stub" 
 )
